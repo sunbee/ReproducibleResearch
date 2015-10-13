@@ -1,0 +1,78 @@
+# Load Data
+
+```{r}
+setwd("C:/Users/ssbhat3/Desktop/Coursera ReproducibleResearch")
+getwd()
+library(data.table)
+act <- read.csv("Activity.csv")
+DTact <- as.data.table(act)
+DTact[, lapply(.SD, class)]
+```
+
+# Condition Data:
+## Rectify date
+
+```{r}
+DTact[, date := as.Date(date)][, 
+      Total := sum(steps), by=date]
+
+```
+
+## Make exploratory plots
+Let's look at the distribution in the number of steps on daily basis.
+```{r}
+library(ggplot2)
+DTact[, {
+  m <- ggplot(.SD, aes(x=Total))
+  m <- m + geom_histogram(aes(y=..density..), binwidth=3000, 
+                          color="black", fill="wheat", alpha=0.2) 
+  m <- m + geom_density(fill="gray", alpha=0.2)
+  m <- m + geom_vline(aes(xintercept=mean(Total, na.rm=TRUE)),
+                      color="red", linetype="dashed", size=1)
+}]
+DTact[, summary(Total, na.rm=TRUE)]
+
+```
+It's a noisy histogram. Have not taken logarithm as there is wide variation in number of steps per day, there is no exponential process underlying. Let's look at the boxplot.
+The total number of steps per day have `mean=10770` and `median=10760`.
+
+Let's look at any pattern in activity by time of day. The time of day is specified by interval number. We can average the number of steps in any interval across all days.
+```{r}
+DTint <- DTact[, .(MeanInt = mean(steps, na.rm=TRUE)), by=interval]
+DTint[, {
+  t <- ggplot(.SD, aes(interval, MeanInt))
+  t <- t + geom_line()
+  t <- t + geom_smooth()
+}]
+DTint[, Smoothed := {
+  myLoess <- loess(data=.SD, MeanInt ~ interval)
+  Smoothed <- myLoess$fitted
+}]
+DTint[, interval[c(which.max(Smoothed), which.max(MeanInt))]]
+```
+The time-series reaffirm noisy data. Smoothing the time series, the maximum number of steps across all days is found in interval `835` in raw data, and interval `900` upon smoothing by the loess method.
+
+Let's see if weekend or weekday makes a difference.
+```{r}
+DTact[, Weekday := weekdays(date)]
+DTact[, {
+  p <- ggplot(.SD, aes(x=factor(Weekday), y=Total, fill=factor(Weekday)))
+  p <- p + geom_boxplot()
+}]                   
+       
+```
+There is clearly variation from day-to-day. Friday inspires more activity that weekdays. There is large variability. Possibly having to do with the choice of compelling activities available on a Friday evening.
+
+Saturday seems to hold up quite well as a favorite. Pangs from Friday's debauchery? Regression using dummy variables offers a way to draw substantiative conclusions.
+
+```{r}
+
+wDay <- DTact[, {
+  lm(Total ~ factor(Weekday))         
+}]
+summary(wDay)
+```
+The regression model reveals that the activity level on Friday is higher than that on any other weekday. We can infer this from the negative intercepts for Monday, Tuesday, Wednesday and Thursday. Further, this difference is statistically significant as seen from extremely small p-values.
+
+The model revels the level of activity on Saturday is slightly higher as compared to Friday, whereas Sunday is slightly lower. The difference is _not_ statistically significant at 95% confidence, as seen from p-values > 0.05. So one may infer that Friday, Saturday and Sunday are days of higher activity. 
+
