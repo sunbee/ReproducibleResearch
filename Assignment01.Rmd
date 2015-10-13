@@ -19,6 +19,7 @@ DTact[, date := as.Date(date)][,
 ```
 
 ## Make exploratory plots
+### What is distribution in daily activity?
 Let's look at the distribution in the number of steps on daily basis.
 ```{r}
 library(ggplot2)
@@ -36,6 +37,7 @@ DTact[, summary(Total, na.rm=TRUE)]
 It's a noisy histogram. Have not taken logarithm as there is wide variation in number of steps per day, there is no exponential process underlying. Let's look at the boxplot.
 The total number of steps per day have `mean=10770` and `median=10760`.
 
+### Does activity vary by time of day?
 Let's look at any pattern in activity by time of day. The time of day is specified by interval number. We can average the number of steps in any interval across all days.
 ```{r}
 DTint <- DTact[, .(MeanInt = mean(steps, na.rm=TRUE)), by=interval]
@@ -52,6 +54,7 @@ DTint[, interval[c(which.max(Smoothed), which.max(MeanInt))]]
 ```
 The time-series reaffirm noisy data. Smoothing the time series, the maximum number of steps across all days is found in interval `835` in raw data, and interval `900` upon smoothing by the loess method.
 
+### Is activity higher on weekday or weekend?
 Let's see if weekend or weekday makes a difference.
 ```{r}
 DTact[, Weekday := weekdays(date)]
@@ -65,6 +68,7 @@ There is clearly variation from day-to-day. Friday inspires more activity that w
 
 Saturday seems to hold up quite well as a favorite. Pangs from Friday's debauchery? Regression using dummy variables offers a way to draw substantiative conclusions.
 
+### Which days of the week are most active?
 ```{r}
 
 wDay <- DTact[, {
@@ -75,4 +79,6 @@ summary(wDay)
 The regression model reveals that the activity level on Friday is higher than that on any other weekday. We can infer this from the negative intercepts for Monday, Tuesday, Wednesday and Thursday. Further, this difference is statistically significant as seen from extremely small p-values.
 
 The model revels the level of activity on Saturday is slightly higher as compared to Friday, whereas Sunday is slightly lower. The difference is _not_ statistically significant at 95% confidence, as seen from p-values > 0.05. So one may infer that Friday, Saturday and Sunday are days of higher activity. 
+
+## Conclusion ##
 
